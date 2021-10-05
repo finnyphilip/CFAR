@@ -1,0 +1,71 @@
+close all;
+%generating a random noise
+Na = 1000; %no of data points that we need to implenent the cfar
+noise = abs(randn(Na,1));
+%we assign some random amplitudes to the noise samples at bin 100,200,350
+%and 750
+noise([100 ,200 ,350 ,700])=[0 15 17 13];
+plot(noise);
+
+
+
+%%Now we can apply CFAR to detect the target by filtering the noise
+
+%First we need to deine a CFAR window and pick optimal numbers of training
+%and guard cells.
+
+%Training cells
+T = 12;
+%Guard cells
+G = 4;
+
+%Now we need to define an offset value
+
+offset = 5;
+
+%%Create a vector to hold threshold values;
+cfar_threshold = [];
+
+%then create another threshold value to hold final signal value after
+%thresholding
+
+cfar_signal = [];
+
+
+%%Now its time to apply Cfar 
+%step through all the cells from one end to another of the signal vector
+%but make sure that we have right spacing from the end.
+
+
+for i = 1:(Na-(G+T+1))
+    
+    %now for each step we need to find the noise level within all the
+    %training cells
+    noise_level = sum(noise(i:i+T-1));
+    
+    %Now to determine the threshold take the average of the summed noise
+    %and multiply with the offset value.
+    
+    threshold = (noise_level/T)*offset;
+    cfar_threshold = [cfar_threshold, {threshold}];
+    %signal under CELL UNDER TEST(CUT)
+    signal = noise(i+T+G);
+    
+    %if the signal level in the cell under test is below the threshold 
+    %assign it a 0 value.
+    
+    if(signal<threshold)
+        signal = 0;
+    end
+    cfar_signal = [cfar_signal, {signal}];
+end
+
+%%now we can plot the signals
+
+%plot(cell2mat(circshift(cfar_threshold,cfar_signal)));
+
+%we can plot the original received signal and threshold on the same Figure
+figure,plot(noise);
+hold on , plot(cell2mat(circshift(cfar_threshold,G)),'r--','linewidth',2)
+hold on , plot(cell2mat(circshift(cfar_signal,(T+G))),'g--','linewidth',4);
+legend('signal','CFAR threshold','detection')
