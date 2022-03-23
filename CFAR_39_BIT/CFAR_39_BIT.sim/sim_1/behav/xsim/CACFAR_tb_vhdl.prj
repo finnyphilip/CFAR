@@ -1,0 +1,7 @@
+# compile vhdl design source files
+vhdl xil_defaultlib  \
+"../../../../../../../../Users/JIBIN ROCHA/OneDrive/Desktop/New folder/CACFAR/hdl/CACFAR.vhd" \
+"../../../../../../../../Users/JIBIN ROCHA/OneDrive/Desktop/New folder/CACFAR/hdl/CACFAR_tb.vhd" \
+
+# Do not sort compile order
+nosort
