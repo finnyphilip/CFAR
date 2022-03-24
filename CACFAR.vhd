@@ -26,10 +26,13 @@ use ieee.std_logic_textio.all;
 
 use std.textio.all;
 
+-- The natural type is the same as the positive type except that it can also be assigned to 0.
+
 entity CACFAR is
 	generic(
-		DATA_WINDOW : natural := 64;
-		DATA_W : natural := 16
+		DATA_WINDOW : natural := 512;
+		SIDE_WINDOW : integer := 506 
+		DATA_W : natural := 32
 	);
 	port(
 		clk    : in  std_logic;
@@ -43,12 +46,14 @@ end CACFAR;
 architecture Behavioral of CACFAR is
 
 	-- FSM signals
-	type states is (idle, read_cut, cfar_acc, fast_cfar_acc, cfar_ave, cfar_threshold, cfar_decision);
+	type states is (idle, read_cut, cfar_acc, fast_cfar_acc, cfar_ave, cfar_threshold, cfar_decision);  -- For better understandability
 	signal state : states;
 
 	-- RAM signals
 	constant ADDR_WIDTH : positive := positive(ceil(log2(real(DATA_WINDOW))));
+        -- no. of memory locations , size of data(bits)
 	type ram is array (0 to 2**ADDR_WIDTH - 1) of std_logic_vector(DATA_W - 1 downto 0);
+	-- 
 	signal cells        : ram      := (others => (others => '0'));
 	signal w_addr       : integer range 0 to 2**ADDR_WIDTH - 1; -- write address
 	signal left_data    : std_logic_vector(DATA_W - 1 downto 0); -- read data port 1
@@ -58,21 +63,21 @@ architecture Behavioral of CACFAR is
 	signal ram_filled   : boolean;
 
 	function get_divisor(value : natural)
-		return signed is
+		return signed is                                     -- return signed data
 		constant TOTAL_WIDTH : natural := 10;
 		constant FRACT_WIDTH : natural := 9;
 	begin
-		return to_signed(integer(1.0/real(value) * real(2 ** FRACT_WIDTH)), TOTAL_WIDTH);
+		return to_signed(integer(1.0/real(value) * real(2 ** FRACT_WIDTH)), TOTAL_WIDTH);   -- Converts INTEGER to a SIGNED vector of length TOTAL_WIDTH
 	end function get_divisor;
 	
 
 	-- Internal signals
-	constant ACC_GROWTH  : natural := natural(ceil(log2(real(8))));
+	constant ACC_GROWTH  : natural := natural(ceil(log2(real(SIDE_WINDOW))));
 	constant ALPHA_WIDTH : natural := natural(ceil(log2(real(5)))) + 1;
-	signal read_cut_ctr  : integer range 0 to 1; -- Pointer within each window
-	signal window_ptr    : integer range 3 to 10; -- Pointer within each window
+	signal read_cut_ctr  : integer range 0 to 1;                 -- Pointer within each window 
+	signal window_ptr    : integer range 3 to 10;                -- Pointer within each window starting from 3 as side window size is 4
 	signal cut_addr      : integer range 0 to 2**ADDR_WIDTH - 1; -- Pointer to the current cell under test    
-	signal cut_value     : signed(DATA_W - 1 downto 0); -- Latch the value of the current cell under test
+	signal cut_value     : signed(DATA_W - 1 downto 0);          -- Latch the value of the current cell under test
 	signal left_acc      : signed(DATA_W + ACC_GROWTH downto 0); -- Accumulator of the left window
 	signal rigth_acc     : signed(DATA_W + ACC_GROWTH downto 0); -- Accumulator of the rigth window
 	signal total_acc     : signed(DATA_W + ACC_GROWTH downto 0); -- Sum of window accumulators
@@ -101,7 +106,7 @@ begin
 	fsm_p : process(clk)
 	begin
 		if rising_edge(clk) then
-			if rst = '0' then
+			if rst = '0' then                        -- ACTIVE LOW
 				ram_filled   <= false;
 				w_addr       <= 0;
 				cut_addr     <= 0;
@@ -121,18 +126,18 @@ begin
 				case state is
 					when idle =>
 						if we = '1' then
-							-- Update write address port
-							if w_addr = ram'HIGH then
+							-- Update write address port cyclic buffer
+							if w_addr = ram'HIGH then                      -- highest subscript of ram array or constrained array type
 								w_addr <= ram'LOW;
 							else
-								w_addr <= w_addr + 1;
+								w_addr <= w_addr + 2;                  -- moving to next addr
 							end if;
 
 							-- Update cut address
-							if w_addr >= 0 and w_addr < 6 then -- Corner cases
+							if w_addr >= 0 and w_addr < 6 then             -- Corner cases, lagging window
 								cut_addr  <= ram'HIGH + w_addr - 6;
 								left_addr <= ram'HIGH + w_addr - 6;
-							elsif w_addr = 6 then -- Wrap address
+							elsif w_addr = 6 then                          -- Wrap address
 								cut_addr  <= ram'LOW;
 								left_addr <= ram'LOW;
 							else
