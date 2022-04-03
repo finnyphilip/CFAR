@@ -55,16 +55,16 @@ begin
     	
     -- Read stimuli from matlab 
     from_txt	:	process
-		file		i_file		:	text open READ_MODE is "D:/work/cacfar/matlab/stimuli.txt";
+		file		i_file		:	text open READ_MODE is "D:/work/cacfar/matlab/outs_final.txt";
 		variable	file_line	:	line;
-		variable	stimuli	    :	std_logic_vector(15 downto 0);
+		variable	stimuli	    :	std_logic_vector(38 downto 0);
 	begin
 		wait until en = '1';
 	    wait until rising_edge(clk);	    
 		while not endfile(i_file) loop	 
 		    readline(i_file,file_line);
 			read(file_line,stimuli);
-			i_data	<=	stimuli & "000" & X"00000";
+			i_data	<=	stimuli;
 			we <= '1';
 			wait for Tclk;
 			i_data	<=	(others => '0');
