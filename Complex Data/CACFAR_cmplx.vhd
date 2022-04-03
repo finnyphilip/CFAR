@@ -115,7 +115,8 @@ architecture Behavioral of CACFAR_cmplx is
 	signal cfar_window : natural range 0 to 512;
 	signal decision_valid : std_logic;
 	signal decision_data : std_logic_vector(78 downto 0);
-
+	signal m : natural range 0 to 255;
+	signal g : natural range 0 to 255;
 begin
 	
 	-- store window size
@@ -129,6 +130,9 @@ begin
 			end if;
 		end if;
 	end process;
+	
+	m <= (cfar_window - 1) / 2 - 1;
+	g <= (cfar_window - 2 * m - 1)/2;
 	
 
 	-- ram process
@@ -220,17 +224,17 @@ begin
 								state <= cfar_acc;
 							end if;
 						end if;
-
+						window_ptr <= g + 1;
 					when cfar_acc =>    -- Update window pointer and accumulate data
-						if window_ptr = 3 then -- Skip guard cells region 
+						if window_ptr = g + 1 then -- Skip guard cells region 
 							window_ptr <= window_ptr + 1;
 							left_acc_re   <= (others => '0');
 							rigth_acc_re  <= (others => '0');
 							left_acc_im   <= (others => '0');
 							rigth_acc_im  <= (others => '0');
-						elsif window_ptr = 4 then -- Wait an extra cycle for data from ram
+						elsif window_ptr = g + 2 then -- Wait an extra cycle for data from ram
 							window_ptr <= window_ptr + 1;
-						elsif window_ptr < 9 then -- Window region
+						elsif window_ptr < g + m then -- Window region
 							window_ptr <= window_ptr + 1;
 							if flag_im = '0' then
 								left_acc_re   <= left_acc_re + signed(left_data);
@@ -239,12 +243,12 @@ begin
 								left_acc_im   <= left_acc_im + signed(left_data);
 								rigth_acc_im  <= rigth_acc_im + signed(rigth_data);
 							end if;
-						elsif window_ptr = 9 then -- Sum of both window accumulation and next state
+						elsif window_ptr = g + m then -- Sum of both window accumulation and next state
 							flag_im <= not flag_im;
 							if flag_im = '1' then
 								state <= cfar_magnitude;
 							end if;
-							window_ptr <= 3;
+							window_ptr <= g + 1;
 							if flag_im = '0' then
 								total_acc_re  <= left_acc_re + rigth_acc_re;
 							else
@@ -283,12 +287,12 @@ begin
 						end if;
 						fast_ave_en <= true;
 					when fast_cfar_acc =>
-						if window_ptr = 3 then
-							window_ptr <= 7;
+						if window_ptr = g + 1 then
+							window_ptr <= g + 1 + m;
 						else
 							window_ptr <= window_ptr + 1;
 						end if;
-						if window_ptr = 8 then
+						if window_ptr = g + m + 2 then
 							if flag_im = '0' then
 								left_acc_re   <= left_acc_re + signed(left_data);
 								rigth_acc_re  <= rigth_acc_re - signed(rigth_data);
@@ -296,7 +300,7 @@ begin
 								left_acc_im   <= left_acc_im + signed(left_data);
 								rigth_acc_im  <= rigth_acc_im - signed(rigth_data);
 							end if;
-						elsif window_ptr = 9 then
+						elsif window_ptr = g + m + 3 then
 							if flag_im = '0' then
 								left_acc_re   <= left_acc_re - signed(left_data);
 								rigth_acc_re  <= rigth_acc_re + signed(rigth_data);
@@ -304,12 +308,12 @@ begin
 								left_acc_im   <= left_acc_im - signed(left_data);
 								rigth_acc_im  <= rigth_acc_im + signed(rigth_data);
 							end if;
-						elsif window_ptr = 10 then
+						elsif window_ptr = g + m + 4 then
 							flag_im <= not flag_im;
 							if flag_im = '1' then
 								state <= cfar_magnitude;
 							end if;
-							window_ptr <= 3;
+							window_ptr <= g + 1;
 							if flag_im = '0' then
 								total_acc_re  <= left_acc_re + rigth_acc_re;
 							else
