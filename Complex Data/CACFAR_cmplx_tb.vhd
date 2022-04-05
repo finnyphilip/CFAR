@@ -19,7 +19,7 @@ architecture Behavioral of CACFAR_cmplx_tb is
     signal stop_clk         :   boolean     :=  false;
 
     -- Stimuli signals
-    constant latency        :   positive    :=  13;    -- Latency for each cell
+    constant latency        :   positive    :=  19;    -- Latency for each cell
     signal stop_stimuli     :   boolean     :=  false;
     signal periods          :   integer range 0 to 64; 
     signal ctr              :   integer range 0 to 80;            
@@ -67,7 +67,9 @@ begin
 			i_data	<=	stimuli;
 			we <= '1';
 			wait for Tclk;
-			i_data	<=	(others => '0');
+			readline(i_file,file_line);
+			read(file_line,stimuli);
+			i_data	<=	stimuli;
 			wait for Tclk;
 			we <= '0';
 			wait for Tclk * latency;
