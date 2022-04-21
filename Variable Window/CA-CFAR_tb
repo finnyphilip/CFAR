@@ -1,0 +1,98 @@
+library ieee;
+use     ieee.std_logic_1164.all;
+use ieee.numeric_std.all;
+use ieee.math_real.all;
+
+use 	std.textio.all;
+
+entity CACFAR_tb is
+
+end CACFAR_tb;
+
+architecture Behavioral of CACFAR_tb is
+
+    -- actual cacfar window size
+	constant CACFAR_WINDOW : natural := 12;
+	-- actual cacfar leading/lagging window size
+	constant CACFAR_M : natural := 4;
+    -- data window size
+	constant CACFAR_DATA_WINDOW : natural := 512;
+	-- data width
+    constant CACFAR_DATA_WIDTH : natural := 32;
+	-- cacfar window size width
+    constant CFAR_WINDOW_W : natural := 10;
+	
+
+    -- Clock and reset signals
+    constant Tclk           :   time        :=  1 us;
+    constant latency        :   positive    :=  13;    -- Latency for each cell
+
+    -- Stimuli signals
+    signal en : boolean := false;            
+    
+    -- DUT signals
+    signal clk              :   std_logic := '0';
+    signal rst              :   std_logic;
+    signal we               :   std_logic;
+    signal i_data           :   std_logic_vector(CACFAR_DATA_WIDTH - 1 downto 0);
+    signal o_data           :   std_logic_vector(CACFAR_DATA_WIDTH - 1 downto 0);
+    signal i_cfar_window_we : std_logic := '0';
+    signal o_tag : std_logic;
+    
+    
+begin
+	-- Clock process
+	clk <= not clk after Tclk/2;
+	-- Reset process
+	rst <= '0' after Tclk, '1' after Tclk * 10;
+	-- Loading windows sizes
+	i_cfar_window_we <= '1' after Tclk * 12, '0' after Tclk * 13;
+	-- Loading data from file
+	en <= true after Tclk * 15;
+
+    -- DUT instantiation
+    DUT :   entity work.CACFAR
+    	generic map(
+    		DATA_WINDOW => CACFAR_DATA_WINDOW,
+    		CFAR_WINDOW_W => CFAR_WINDOW_W,
+    		DATA_W => CACFAR_DATA_WIDTH
+    	)
+    	port map(
+    		clk => clk,
+    		rst => rst,
+    		i_cfar_window => std_logic_vector(to_unsigned(CACFAR_WINDOW, CFAR_WINDOW_W)),
+    		i_m => std_logic_vector(to_unsigned(CACFAR_M, CFAR_WINDOW_W)),
+    		i_cfar_window_we => i_cfar_window_we,
+    		we => we,
+    		i_data => i_data,
+    		o_data => o_data,
+    		o_tag => o_tag
+    	); 
+        
+    -- Read stimuli from file, convert them to fixed point values
+    from_txt	:	process
+		file		i_file		:	text open READ_MODE is "D:/work/CACFAR/matlab/out_dec.txt";
+		variable	file_line	:	line;
+		variable    real_var    :  real;
+		variable	stimuli	    :	std_logic_vector(CACFAR_DATA_WIDTH - 1 downto 0);
+	begin
+	    wait until en;
+	    wait until rising_edge(clk);	    
+		while not endfile(i_file) loop	
+		    readline(i_file,file_line);
+			read(file_line,real_var);
+			stimuli := std_logic_vector(to_signed(integer(real_var * real(2**(CACFAR_DATA_WIDTH - 6))),CACFAR_DATA_WIDTH));
+			i_data	<=	stimuli;
+			we <= '1';
+			wait for Tclk;
+			we <= '0';
+			wait for Tclk * latency;	
+		end loop;
+		file_close(i_file);
+		wait for Tclk * 16;
+		report "user stop" severity failure;
+		wait;
+	end process;
+
+
+end Behavioral;
