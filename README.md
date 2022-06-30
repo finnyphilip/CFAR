@@ -11,3 +11,14 @@ environment, because the false alarm rate is maintained at a constant level whil
 threshold changes with different underwater environments, in presence of interfering
 targets. Functional verification is done using Matlab, Simulation in Xilinx Vivado and the
 architecture is implemented in FPGA.
+## CA-CFAR
+- Take the average of the samples contained in the reference cells.
+- Threshold is calculated based on the interference power contained in
+the reference cells.
+## OS-CFAR
+- General idea of OS is that the noise estimation is based on the k-th
+values of reference values sorted in ascending order.
+- The arithmetic mean used in CA-CFAR algorithms is replaced by a
+single rank of the ordered-statistic Xk.
+- OS-CFAR uses only a single value to determine the threshold value,
+the choice of N is less important compared to the CA-CFAR
